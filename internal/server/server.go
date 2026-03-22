@@ -1,6 +1,7 @@
 package server
 
 import (
+	"database/sql"
 	"encoding/json"
 	"net/http"
 
@@ -9,12 +10,14 @@ import (
 
 type Server struct {
 	cfg    *config.Config
+	db     *sql.DB
 	router *http.ServeMux
 }
 
-func New(cfg *config.Config) *Server {
+func New(cfg *config.Config, db *sql.DB) *Server {
 	s := &Server{
 		cfg:    cfg,
+		db:     db,
 		router: http.NewServeMux(),
 	}
 	s.routes()

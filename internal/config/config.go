@@ -13,8 +13,8 @@ type Config struct {
 
 func Load() *Config {
 	return &Config{
-		Port:        envOrDefault("PORT", "8080"),
-		DatabaseURL: envOrDefault("DATABASE_URL", "postgres://eventlake:eventlake@localhost:5432/eventlake?sslmode=disable"),
+		Port:        envOrDefault("PORT", "8090"),
+		DatabaseURL: envOrDefault("DATABASE_URL", "postgres://eventlake:eventlake@localhost:5433/eventlake?sslmode=disable"),
 		RedisURL:    envOrDefault("REDIS_URL", "redis://localhost:6379/0"),
 	}
 }
