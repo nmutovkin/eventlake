@@ -45,6 +45,11 @@ func (s *Server) routes() {
 	s.router.HandleFunc("POST /v1/tenants/{id}/api-keys", s.handleCreateAPIKey)
 	s.router.HandleFunc("GET /v1/tenants/{id}/api-keys", s.handleListAPIKeys)
 	s.router.HandleFunc("DELETE /v1/tenants/{id}/api-keys/{keyID}", s.handleRevokeAPIKey)
+
+	// Authenticated endpoints
+	authed := http.NewServeMux()
+	authed.HandleFunc("POST /v1/events", s.handleIngestPlaceholder)
+	s.router.Handle("/", s.requireAuth(authed))
 }
 
 func (s *Server) handleHealth(w http.ResponseWriter, r *http.Request) {
