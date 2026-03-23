@@ -1,16 +1,23 @@
 package main
 
 import (
+	"context"
 	"log"
 	"net/http"
+	"os/signal"
+	"syscall"
 
 	"github.com/nmutovkin/eventlake/internal/config"
 	"github.com/nmutovkin/eventlake/internal/database"
 	rdclient "github.com/nmutovkin/eventlake/internal/redis"
 	"github.com/nmutovkin/eventlake/internal/server"
+	"github.com/nmutovkin/eventlake/internal/worker"
 )
 
 func main() {
+	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
+	defer stop()
+
 	cfg := config.Load()
 	if err := cfg.Validate(); err != nil {
 		log.Fatalf("invalid config: %v", err)
@@ -32,6 +39,14 @@ func main() {
 		log.Fatalf("redis connection: %v", err)
 	}
 	defer rdb.Close()
+
+	// Start write worker
+	w := worker.NewWriter(db, rdb)
+	go func() {
+		if err := w.Run(ctx); err != nil && ctx.Err() == nil {
+			log.Fatalf("write worker error: %v", err)
+		}
+	}()
 
 	srv := server.New(cfg, db, rdb)
 
