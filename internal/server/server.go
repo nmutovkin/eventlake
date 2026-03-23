@@ -2,23 +2,28 @@ package server
 
 import (
 	"database/sql"
-	"encoding/json"
 	"net/http"
 
+	"github.com/nmutovkin/eventlake/internal/apikey"
 	"github.com/nmutovkin/eventlake/internal/config"
+	"github.com/nmutovkin/eventlake/internal/tenant"
 )
 
 type Server struct {
-	cfg    *config.Config
-	db     *sql.DB
-	router *http.ServeMux
+	cfg     *config.Config
+	db      *sql.DB
+	tenants *tenant.Store
+	apiKeys *apikey.Store
+	router  *http.ServeMux
 }
 
 func New(cfg *config.Config, db *sql.DB) *Server {
 	s := &Server{
-		cfg:    cfg,
-		db:     db,
-		router: http.NewServeMux(),
+		cfg:     cfg,
+		db:      db,
+		tenants: tenant.NewStore(db),
+		apiKeys: apikey.NewStore(db),
+		router:  http.NewServeMux(),
 	}
 	s.routes()
 	return s
@@ -30,9 +35,18 @@ func (s *Server) Handler() http.Handler {
 
 func (s *Server) routes() {
 	s.router.HandleFunc("GET /healthz", s.handleHealth)
+
+	// Tenants
+	s.router.HandleFunc("POST /v1/tenants", s.handleCreateTenant)
+	s.router.HandleFunc("GET /v1/tenants", s.handleListTenants)
+	s.router.HandleFunc("GET /v1/tenants/{id}", s.handleGetTenant)
+
+	// API Keys
+	s.router.HandleFunc("POST /v1/tenants/{id}/api-keys", s.handleCreateAPIKey)
+	s.router.HandleFunc("GET /v1/tenants/{id}/api-keys", s.handleListAPIKeys)
+	s.router.HandleFunc("DELETE /v1/tenants/{id}/api-keys/{keyID}", s.handleRevokeAPIKey)
 }
 
 func (s *Server) handleHealth(w http.ResponseWriter, r *http.Request) {
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(map[string]string{"status": "ok"})
+	writeJSON(w, http.StatusOK, map[string]string{"status": "ok"})
 }
