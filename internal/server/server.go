@@ -4,26 +4,31 @@ import (
 	"database/sql"
 	"net/http"
 
+	"github.com/redis/go-redis/v9"
+
 	"github.com/nmutovkin/eventlake/internal/apikey"
 	"github.com/nmutovkin/eventlake/internal/config"
+	"github.com/nmutovkin/eventlake/internal/ingest"
 	"github.com/nmutovkin/eventlake/internal/tenant"
 )
 
 type Server struct {
-	cfg     *config.Config
-	db      *sql.DB
-	tenants *tenant.Store
-	apiKeys *apikey.Store
-	router  *http.ServeMux
+	cfg       *config.Config
+	db        *sql.DB
+	tenants   *tenant.Store
+	apiKeys   *apikey.Store
+	publisher *ingest.Publisher
+	router    *http.ServeMux
 }
 
-func New(cfg *config.Config, db *sql.DB) *Server {
+func New(cfg *config.Config, db *sql.DB, rdb *redis.Client) *Server {
 	s := &Server{
-		cfg:     cfg,
-		db:      db,
-		tenants: tenant.NewStore(db),
-		apiKeys: apikey.NewStore(db),
-		router:  http.NewServeMux(),
+		cfg:       cfg,
+		db:        db,
+		tenants:   tenant.NewStore(db),
+		apiKeys:   apikey.NewStore(db),
+		publisher: ingest.NewPublisher(rdb),
+		router:    http.NewServeMux(),
 	}
 	s.routes()
 	return s
@@ -48,7 +53,7 @@ func (s *Server) routes() {
 
 	// Authenticated endpoints
 	authed := http.NewServeMux()
-	authed.HandleFunc("POST /v1/events", s.handleIngestPlaceholder)
+	authed.HandleFunc("POST /v1/events", s.handleIngest)
 	s.router.Handle("/", s.requireAuth(authed))
 }
 

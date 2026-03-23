@@ -6,6 +6,7 @@ import (
 
 	"github.com/nmutovkin/eventlake/internal/config"
 	"github.com/nmutovkin/eventlake/internal/database"
+	rdclient "github.com/nmutovkin/eventlake/internal/redis"
 	"github.com/nmutovkin/eventlake/internal/server"
 )
 
@@ -26,7 +27,13 @@ func main() {
 	}
 	log.Println("migrations complete")
 
-	srv := server.New(cfg, db)
+	rdb, err := rdclient.Connect(cfg.RedisURL)
+	if err != nil {
+		log.Fatalf("redis connection: %v", err)
+	}
+	defer rdb.Close()
+
+	srv := server.New(cfg, db, rdb)
 
 	log.Printf("eventlake listening on :%s", cfg.Port)
 	if err := http.ListenAndServe(":"+cfg.Port, srv.Handler()); err != nil {
