@@ -9,16 +9,18 @@ import (
 	"github.com/nmutovkin/eventlake/internal/apikey"
 	"github.com/nmutovkin/eventlake/internal/config"
 	"github.com/nmutovkin/eventlake/internal/ingest"
+	"github.com/nmutovkin/eventlake/internal/query"
 	"github.com/nmutovkin/eventlake/internal/tenant"
 )
 
 type Server struct {
-	cfg       *config.Config
-	db        *sql.DB
-	tenants   *tenant.Store
-	apiKeys   *apikey.Store
-	publisher *ingest.Publisher
-	router    *http.ServeMux
+	cfg         *config.Config
+	db          *sql.DB
+	tenants     *tenant.Store
+	apiKeys     *apikey.Store
+	publisher   *ingest.Publisher
+	queryEngine *query.Engine
+	router      *http.ServeMux
 }
 
 func New(cfg *config.Config, db *sql.DB, rdb *redis.Client) *Server {
@@ -27,8 +29,9 @@ func New(cfg *config.Config, db *sql.DB, rdb *redis.Client) *Server {
 		db:        db,
 		tenants:   tenant.NewStore(db),
 		apiKeys:   apikey.NewStore(db),
-		publisher: ingest.NewPublisher(rdb),
-		router:    http.NewServeMux(),
+		publisher:   ingest.NewPublisher(rdb),
+		queryEngine: query.NewEngine(db),
+		router:      http.NewServeMux(),
 	}
 	s.routes()
 	return s
@@ -54,6 +57,7 @@ func (s *Server) routes() {
 	// Authenticated endpoints
 	authed := http.NewServeMux()
 	authed.HandleFunc("POST /v1/events", s.handleIngest)
+	authed.HandleFunc("POST /v1/query", s.handleQuery)
 	s.router.Handle("/", s.requireAuth(authed))
 }
 
