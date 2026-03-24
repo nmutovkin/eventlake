@@ -10,6 +10,7 @@ import (
 	"github.com/nmutovkin/eventlake/internal/config"
 	"github.com/nmutovkin/eventlake/internal/database"
 	rdclient "github.com/nmutovkin/eventlake/internal/redis"
+	"github.com/nmutovkin/eventlake/internal/rollup"
 	"github.com/nmutovkin/eventlake/internal/server"
 	"github.com/nmutovkin/eventlake/internal/worker"
 )
@@ -47,6 +48,11 @@ func main() {
 			log.Fatalf("write worker error: %v", err)
 		}
 	}()
+
+	// Start rollup scheduler
+	rollupJob := rollup.NewJob(db)
+	rollupSched := rollup.NewScheduler(rollupJob)
+	go rollupSched.Run(ctx)
 
 	srv := server.New(cfg, db, rdb)
 
